@@ -1,0 +1,519 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Simulador de uso eficiente del laboratorio de cómputo</title>
+<style>
+  :root{
+    --bg:#f4f6f9; --card:#ffffff; --ink:#111827; --muted:#6b7280;
+    --line:#e2e8f0; --brand:#0f2c59; --accent:#1d4ed8;
+    --ok:#0f7b4f; --ok-bg:#e6f6ee;
+    --warn:#8a5a00; --warn-bg:#fff5e0;
+    --crit:#9b1c1c; --crit-bg:#fdeaea;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0; background:var(--bg); color:var(--ink);
+    font-family:"Segoe UI",Roboto,system-ui,-apple-system,sans-serif;
+    font-size:15px; line-height:1.55;
+  }
+  header{
+    background:var(--brand); color:#fff; padding:22px 28px 20px;
+  }
+  header h1{ margin:0 0 4px; font-size:21px; font-weight:650; letter-spacing:.2px }
+  header p{ margin:0; font-size:13px; color:#c7d2e4 }
+  .wrap{ max-width:1180px; margin:0 auto; padding:24px 20px 48px }
+  .grid{ display:grid; grid-template-columns:1fr 1fr; gap:18px; align-items:start }
+  @media (max-width:900px){ .grid{ grid-template-columns:1fr } }
+  section.card{
+    background:var(--card); border:1px solid var(--line); border-radius:10px;
+    padding:18px 20px 20px; margin-bottom:18px;
+  }
+  section.card > h2{
+    margin:0 0 14px; font-size:13px; text-transform:uppercase;
+    letter-spacing:.09em; color:var(--muted); font-weight:700;
+  }
+  .field{ margin-bottom:13px }
+  .field label{ display:block; font-size:13px; font-weight:600; margin-bottom:4px; color:#374151 }
+  .field .hint{ font-size:11.5px; color:var(--muted); font-weight:400; margin-left:4px }
+  input[type=number], input[type=text]{
+    width:100%; padding:8px 10px; border:1px solid #cbd5e1; border-radius:6px;
+    font-size:14px; font-family:inherit; background:#fff; color:var(--ink);
+  }
+  input:focus{ outline:2px solid #93b4f7; outline-offset:1px; border-color:var(--accent) }
+  .row2{ display:grid; grid-template-columns:1fr 1fr; gap:12px }
+  .btn{
+    font-family:inherit; font-size:13.5px; font-weight:600; cursor:pointer;
+    border-radius:7px; padding:9px 16px; border:1px solid transparent;
+  }
+  .btn-primary{ background:var(--accent); color:#fff }
+  .btn-primary:hover{ background:#1a43b8 }
+  .btn-out{ background:#fff; border-color:#cbd5e1; color:#334155 }
+  .btn-out:hover{ background:#f1f5f9 }
+  .btn-sc{ background:#fff; border-color:#cbd5e1; color:#334155; font-weight:600 }
+  .btn-sc:hover{ border-color:var(--accent); color:var(--accent) }
+  .actions{ display:flex; gap:10px; margin-top:16px; flex-wrap:wrap }
+  .scenarios{ display:flex; gap:8px; flex-wrap:wrap; margin-bottom:4px }
+  .scenarios .lbl{ font-size:12px; color:var(--muted); width:100%; margin-bottom:2px }
+
+  /* resultados */
+  .status-global{
+    border-radius:9px; padding:14px 16px; margin-bottom:16px;
+    border:1px solid var(--line); background:#f8fafc;
+  }
+  .status-global .tag{ font-size:11px; text-transform:uppercase; letter-spacing:.08em; color:var(--muted); font-weight:700 }
+  .status-global .val{ font-size:20px; font-weight:700; margin-top:2px }
+  .tiles{ display:grid; grid-template-columns:1fr 1fr; gap:12px }
+  .tile{ border:1px solid var(--line); border-radius:9px; padding:12px 14px; background:#fff }
+  .tile .name{ font-size:12px; font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:.05em }
+  .tile .num{ font-size:22px; font-weight:700; margin:3px 0 1px; font-variant-numeric:tabular-nums }
+  .tile .num.sm{ font-size:16px; margin:0 }
+  .tile .subrow{ display:flex; align-items:baseline; gap:8px; flex-wrap:wrap }
+  .tile .pill{ display:inline-block; font-size:11.5px; font-weight:700; padding:2px 9px; border-radius:20px; margin-top:4px }
+  .tile .detail{ font-size:11.5px; color:var(--muted); margin-top:6px; font-variant-numeric:tabular-nums }
+
+  .normal{ background:var(--ok-bg); color:var(--ok) }
+  .advertencia{ background:var(--warn-bg); color:var(--warn) }
+  .critico{ background:var(--crit-bg); color:var(--crit) }
+  .tile.normal{ border-color:#bfe3d1 } .tile.advertencia{ border-color:#f2dfb4 } .tile.critico{ border-color:#f3c9c9 }
+  .status-global.normal{ background:var(--ok-bg); border-color:#bfe3d1 } .status-global.normal .val{ color:var(--ok) }
+  .status-global.advertencia{ background:var(--warn-bg); border-color:#f2dfb4 } .status-global.advertencia .val{ color:var(--warn) }
+  .status-global.critico{ background:var(--crit-bg); border-color:#f3c9c9 } .status-global.critico .val{ color:var(--crit) }
+
+  ul.alerts{ list-style:none; padding:0; margin:0 }
+  ul.alerts li{
+    font-size:13.5px; padding:8px 11px; border-radius:7px; margin-bottom:7px;
+    border-left:3px solid #cbd5e1; background:#f8fafc;
+  }
+  ul.alerts li.advertencia{ border-left-color:#e0a92e; background:var(--warn-bg) }
+  ul.alerts li.critico{ border-left-color:#c8392f; background:var(--crit-bg) }
+  ul.alerts li.normal{ border-left-color:#2f9e6b; background:var(--ok-bg) }
+  ul.alerts li b{ font-weight:700 }
+  .empty{ font-size:13px; color:var(--muted); font-style:italic }
+
+  table{ width:100%; border-collapse:collapse; font-size:12.5px }
+  th,td{ text-align:left; padding:6px 8px; border-bottom:1px solid var(--line) }
+  th{ font-size:11px; text-transform:uppercase; letter-spacing:.06em; color:var(--muted) }
+  td.mono, th.mono{ font-family:"Cascadia Mono",Consolas,monospace; font-variant-numeric:tabular-nums }
+  .table-note{ font-size:11.5px; color:var(--muted); margin-top:8px }
+
+  .ops{ font-family:"Cascadia Mono",Consolas,monospace; font-size:12.5px; }
+  .ops .op{ padding:5px 0; border-bottom:1px dotted var(--line); display:flex; gap:8px; justify-content:space-between }
+  .ops .op .expr{ color:#334155 }
+  .ops .op .res{ font-weight:700 }
+  .ops .res.true{ color:var(--ok) } .ops .res.false{ color:var(--crit) }
+
+  .error{ background:var(--crit-bg); border:1px solid #f3c9c9; color:var(--crit);
+          padding:10px 13px; border-radius:7px; font-size:13px; margin-bottom:14px; display:none }
+  .error.on{ display:block }
+  footer{ font-size:11.5px; color:var(--muted); text-align:center; padding:0 20px 30px }
+</style>
+</head>
+<body>
+<header>
+  <h1>Simulador de uso eficiente del laboratorio de cómputo</h1>
+  <p>Arquitectura del Computador · UPN · Grupo 6 · Caso N.º 12</p>
+</header>
+
+<div class="wrap">
+
+  <div class="error" id="errorBox" role="alert"></div>
+
+  <div class="grid">
+
+    <!-- ENTRADAS -->
+    <section class="card">
+      <h2>1. Entrada de datos</h2>
+
+      <div class="row2">
+        <div class="field">
+          <label for="cpu">Uso de CPU (%) <span class="hint">0–100</span></label>
+          <input type="number" id="cpu" min="0" max="100" step="1" value="78">
+        </div>
+        <div class="field">
+          <label for="ram">Uso de RAM (%) <span class="hint">0–100</span></label>
+          <input type="number" id="ram" min="0" max="100" step="1" value="82">
+        </div>
+      </div>
+
+      <div class="row2">
+        <div class="field">
+          <label for="libre">Disco libre (GB)</label>
+          <input type="number" id="libre" min="0" step="1" value="30">
+        </div>
+        <div class="field">
+          <label for="total">Disco total (GB)</label>
+          <input type="number" id="total" min="1" step="1" value="200">
+        </div>
+      </div>
+
+      <div class="row2">
+        <div class="field">
+          <label for="appNombre">Aplicación abierta</label>
+          <input type="text" id="appNombre" value="Navegador">
+        </div>
+        <div class="field">
+          <label for="appMin">Minutos sin uso</label>
+          <input type="number" id="appMin" min="0" step="1" value="30">
+        </div>
+      </div>
+
+      <div class="field">
+        <label for="equipoMin">Inactividad del equipo (min)</label>
+        <input type="number" id="equipoMin" min="0" step="1" value="40">
+      </div>
+
+      <div class="scenarios">
+        <span class="lbl">Cargar escenario predefinido:</span>
+        <button class="btn btn-sc" data-sc="normal">Normal</button>
+        <button class="btn btn-sc" data-sc="advertencia">Advertencia</button>
+        <button class="btn btn-sc" data-sc="critico">Crítico</button>
+      </div>
+
+      <div class="actions">
+        <button class="btn btn-primary" id="btnEvaluar">Evaluar estado</button>
+        <button class="btn btn-out" id="btnLimpiar">Limpiar registro</button>
+      </div>
+    </section>
+
+    <!-- SALIDAS -->
+    <section class="card">
+      <h2>2. Salidas del sistema</h2>
+
+      <div class="status-global" id="globalBox" aria-live="polite">
+        <div class="tag">Estado global del equipo</div>
+        <div class="val" id="globalVal">—</div>
+      </div>
+
+      <div class="tiles">
+        <div class="tile" id="tileCpu">
+          <div class="name">CPU</div>
+          <div class="num" id="numCpu">—</div>
+          <span class="pill" id="pillCpu">—</span>
+          <div class="detail" id="detCpu"></div>
+        </div>
+        <div class="tile" id="tileRam">
+          <div class="name">Memoria RAM</div>
+          <div class="num" id="numRam">—</div>
+          <span class="pill" id="pillRam">—</span>
+          <div class="detail" id="detRam"></div>
+        </div>
+        <div class="tile" id="tileDisco">
+          <div class="name">Almacenamiento</div>
+          <div class="num" id="numDisco">—</div>
+          <span class="pill" id="pillDisco">—</span>
+          <div class="detail" id="detDisco"></div>
+        </div>
+        <div class="tile" id="tileInact">
+          <div class="name">Inactividad</div>
+          <div class="subrow">
+            <span class="num" id="numInact">—</span>
+            <span class="pill" id="pillInact">—</span>
+          </div>
+          <div class="detail" id="detInact"></div>
+          <div class="subrow" style="margin-top:9px">
+            <span class="num sm" id="numApp">—</span>
+            <span class="pill" id="pillApp">—</span>
+          </div>
+          <div class="detail" id="detApp"></div>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <!-- ALERTAS -->
+  <section class="card">
+    <h2>3. Alertas y recomendaciones</h2>
+    <ul class="alerts" id="alertList" aria-live="polite">
+      <li class="empty">Presione «Evaluar estado» para procesar los datos.</li>
+    </ul>
+  </section>
+
+  <div class="grid">
+    <!-- REPRESENTACION -->
+    <section class="card">
+      <h2>4. Representación de datos</h2>
+      <table>
+        <thead>
+          <tr><th>Dato</th><th class="mono">Decimal</th><th class="mono">Binario (8 bits)</th><th class="mono">Hexadecimal</th></tr>
+        </thead>
+        <tbody id="repBody"></tbody>
+      </table>
+      <p class="table-note">Cada valor se almacena como un entero de 8 bits. La columna hexadecimal equivale al mismo patrón de bits en base 16.</p>
+    </section>
+
+    <!-- OPERACIONES -->
+    <section class="card">
+      <h2>5. Operaciones ejecutadas</h2>
+      <div class="ops" id="opsList"><div class="empty">Sin operaciones registradas.</div></div>
+    </section>
+  </div>
+
+</div>
+
+<footer>Prototipo de simulación. No monitorea equipos reales, no cierra aplicaciones ni suspende el equipo.</footer>
+
+<script>
+(function(){
+  "use strict";
+
+  /* ---------- Umbrales (únicos y coherentes con el informe §9) ---------- */
+  var U = {
+    cpu:  { adv: 70, crit: 90 },
+    ram:  { adv: 70, crit: 90 },
+    disco:{ crit: 10, adv: 20 },   // ojo: en disco el crítico es el valor BAJO
+    app:  { adv: 20, crit: 45 },
+    equipo:{ adv: 30, crit: 60 }
+  };
+
+  var RANK = { normal:0, advertencia:1, critico:2 };
+  var LABEL = { normal:"Normal", advertencia:"Advertencia", critico:"Crítico" };
+
+  /* ---------- Clasificadores ---------- */
+  function clasifAlto(v, t){           // CPU, RAM, inactividad: mayor es peor
+    if (v >= t.crit) return "critico";
+    if (v >= t.adv)  return "advertencia";
+    return "normal";
+  }
+  function clasifDisco(pct, t){        // disco: menor es peor
+    if (pct < t.crit) return "critico";
+    if (pct <= t.adv) return "advertencia";
+    return "normal";
+  }
+
+  /* ---------- Utilidades ---------- */
+  function bin8(n){
+    var v = Math.max(0, Math.min(255, Math.round(n)));
+    return v.toString(2).padStart(8,"0");
+  }
+  function hex8(n){
+    var v = Math.max(0, Math.min(255, Math.round(n)));
+    return v.toString(16).toUpperCase().padStart(2,"0");
+  }
+  function $(id){ return document.getElementById(id); }
+  function num(id){ return parseFloat($(id).value); }
+
+  var errores = [];
+  function error(msg){ errores.push(msg); }
+
+  /* ---------- Núcleo del procesamiento ---------- */
+  function evaluar(){
+    errores = [];
+    var cpu = num("cpu"), ram = num("ram"), libre = num("libre"),
+        total = num("total"), appMin = num("appMin"), equipoMin = num("equipoMin"),
+        appNombre = ($("appNombre").value || "Aplicación").trim();
+
+    if (isNaN(cpu) || cpu < 0 || cpu > 100) error("El uso de CPU debe estar entre 0 y 100 %.");
+    if (isNaN(ram) || ram < 0 || ram > 100) error("El uso de RAM debe estar entre 0 y 100 %.");
+    if (isNaN(libre) || libre < 0) error("El disco libre no puede ser negativo.");
+    if (isNaN(total) || total <= 0) error("El disco total debe ser mayor que cero.");
+    if (!isNaN(libre) && !isNaN(total) && libre > total) error("El disco libre no puede superar la capacidad total.");
+    if (isNaN(appMin) || appMin < 0) error("Los minutos sin uso deben ser un número positivo.");
+    if (isNaN(equipoMin) || equipoMin < 0) error("La inactividad del equipo debe ser un número positivo.");
+
+    if (errores.length){
+      var box = $("errorBox");
+      box.innerHTML = "<b>No se puede evaluar:</b><br>" + errores.join("<br>");
+      box.classList.add("on");
+      limpiarPanel();
+      return null;
+    }
+    $("errorBox").classList.remove("on");
+
+    // --- OP aritmética: porcentaje de disco libre ---
+    var pctDisco = total > 0 ? (libre / total) * 100 : 0;
+
+    // --- Clasificación por recurso ---
+    var sCpu = clasifAlto(cpu, U.cpu);
+    var sRam = clasifAlto(ram, U.ram);
+    var sDisco = clasifDisco(pctDisco, U.disco);
+    var sApp = clasifAlto(appMin, U.app);
+    var sEquipo = clasifAlto(equipoMin, U.equipo);
+
+    // --- OP lógica: estado global = el peor de todos ---
+    var global = [sCpu, sRam, sDisco, sApp, sEquipo].reduce(function(a,b){
+      return RANK[b] > RANK[a] ? b : a;
+    }, "normal");
+
+    return {
+      cpu:cpu, ram:ram, libre:libre, total:total, pctDisco:pctDisco,
+      appMin:appMin, appNombre:appNombre, equipoMin:equipoMin,
+      sCpu:sCpu, sRam:sRam, sDisco:sDisco, sApp:sApp, sEquipo:sEquipo, global:global
+    };
+  }
+
+  /* ---------- Pintado ---------- */
+  function limpiarPanel(){
+    var g = $("globalBox");
+    g.className = "status-global";
+    $("globalVal").textContent = "No evaluado";
+    ["Cpu","Ram","Disco","Inact"].forEach(function(k){
+      $("num"+k).textContent = "—";
+      var p = $("pill"+k); p.textContent = "—"; p.className = "pill";
+      $("det"+k).textContent = "";
+      $("tile"+k).className = "tile";
+      $("tile"+k).style.borderColor = "";
+    });
+    $("numApp").textContent = "—";
+    $("detApp").textContent = "";
+    var pa = $("pillApp"); pa.textContent = "—"; pa.className = "pill";
+    $("alertList").innerHTML = '<li class="empty">Corrija los datos de entrada para poder evaluar.</li>';
+    $("repBody").innerHTML = "";
+    $("opsList").innerHTML = '<div class="empty">Sin operaciones registradas.</div>';
+  }
+  function setPill(pillId, estado){
+    var p = $(pillId);
+    p.textContent = LABEL[estado];
+    p.className = "pill " + estado;
+  }
+  function setTile(tileId, estado){
+    var t = $(tileId);
+    t.className = "tile " + (estado === "normal" ? "" : estado);
+    // bordes por estado
+    t.style.borderColor = estado === "critico" ? "#f3c9c9" : estado === "advertencia" ? "#f2dfb4" : "#bfe3d1";
+  }
+
+  function pintar(r){
+    if (!r){ return; }
+
+    setTile("tileCpu", r.sCpu);   setPill("pillCpu", r.sCpu);
+    setTile("tileRam", r.sRam);   setPill("pillRam", r.sRam);
+    setTile("tileDisco", r.sDisco); setPill("pillDisco", r.sDisco);
+    setTile("tileInact", RANK[r.sApp] > RANK[r.sEquipo] ? r.sApp : r.sEquipo);
+    setPill("pillInact", r.sEquipo);
+    setPill("pillApp", r.sApp);
+
+    $("numCpu").textContent = r.cpu + " %";
+    $("numRam").textContent = r.ram + " %";
+    $("numDisco").textContent = r.pctDisco.toFixed(0) + " %";
+    $("numInact").textContent = r.equipoMin + " min";
+    $("numApp").textContent = r.appMin + " min";
+
+    $("detCpu").textContent   = "umbral " + U.cpu.adv + " / " + U.cpu.crit + " %";
+    $("detRam").textContent   = "umbral " + U.ram.adv + " / " + U.ram.crit + " %";
+    $("detDisco").textContent = r.libre + " GB de " + r.total + " GB · umbral " + U.disco.adv + " / " + U.disco.crit + " %";
+    $("detInact").textContent = "equipo sin actividad · umbral " + U.equipo.adv + " / " + U.equipo.crit + " min";
+    $("detApp").textContent   = "«" + r.appNombre + "» · umbral " + U.app.adv + " / " + U.app.crit + " min";
+
+    var g = $("globalBox");
+    g.className = "status-global " + r.global;
+    $("globalVal").textContent = LABEL[r.global] +
+      (r.global === "normal" ? " · sin alertas" : "");
+
+    /* Alertas */
+    var html = "";
+    function push(estado, texto){
+      if (estado !== "normal") html += '<li class="' + estado + '"><b>' +
+        LABEL[estado] + ':</b> ' + texto + '</li>';
+    }
+    push(r.sCpu, "el procesador está al " + r.cpu + " %. " +
+      (r.sCpu === "critico" ? "Recomendación: cerrar procesos que consuman CPU." : "Recomendación: revisar las aplicaciones abiertas."));
+    push(r.sRam, "la memoria RAM está al " + r.ram + " %. " +
+      (r.sRam === "critico" ? "Recomendación: cerrar aplicaciones que no se estén usando." : "Recomendación: vigilar el consumo de memoria."));
+    push(r.sDisco, "queda " + r.pctDisco.toFixed(1) + " % de espacio libre (" + r.libre + " GB). " +
+      (r.sDisco === "critico" ? "Recomendación: liberar espacio de inmediato." : "Recomendación: liberar espacio antes de que baje del 10 %."));
+    push(r.sApp, "«" + r.appNombre + "» lleva " + r.appMin + " minutos sin uso. " +
+      (r.sApp === "critico" ? "Recomendación: cerrarla o guardar el trabajo y cerrar." : "Recomendación: revisar si aún se necesita."));
+    push(r.sEquipo, "el equipo lleva " + r.equipoMin + " minutos sin actividad. " +
+      (r.sEquipo === "critico" ? "Recomendación: suspender el equipo." : "Recomendación: guardar el trabajo y suspender el equipo."));
+
+    if (r.global === "normal"){
+      html = '<li class="normal"><b>Sin alertas:</b> todos los recursos están dentro de los límites establecidos.</li>';
+    }
+    /* Los estados de la app se reflejan en el tile de inactividad si son peores */
+    $("alertList").innerHTML = html;
+
+    /* Representación de datos */
+    var filas = [
+      ["Uso de CPU (%)", r.cpu],
+      ["Uso de RAM (%)", r.ram],
+      ["Espacio libre (GB)", r.libre],
+      ["Espacio libre (%)", Math.round(r.pctDisco)]
+    ];
+    $("repBody").innerHTML = filas.map(function(f){
+      return "<tr><td>" + f[0] + "</td><td class='mono'>" + f[1] +
+             "</td><td class='mono'>" + bin8(f[1]) +
+             "</td><td class='mono'>" + hex8(f[1]) + "</td></tr>";
+    }).join("");
+
+    /* Operaciones ejecutadas */
+    var ops = [
+      ["CPU " + r.cpu + " >= " + U.cpu.adv, r.cpu >= U.cpu.adv],
+      ["CPU " + r.cpu + " >= " + U.cpu.crit, r.cpu >= U.cpu.crit],
+      ["RAM " + r.ram + " >= " + U.ram.adv, r.ram >= U.ram.adv],
+      ["RAM " + r.ram + " >= " + U.ram.crit, r.ram >= U.ram.crit],
+      [r.libre + " / " + r.total + " * 100 = " + r.pctDisco.toFixed(1), r.pctDisco],
+      ["disco(%) < " + U.disco.crit, r.pctDisco < U.disco.crit],
+      ["disco(%) <= " + U.disco.adv, r.pctDisco <= U.disco.adv],
+      ["app " + r.appMin + " >= " + U.app.adv, r.appMin >= U.app.adv],
+      ["app " + r.appMin + " >= " + U.app.crit, r.appMin >= U.app.crit],
+      ["equipo " + r.equipoMin + " >= " + U.equipo.adv, r.equipoMin >= U.equipo.adv],
+      ["equipo " + r.equipoMin + " >= " + U.equipo.crit, r.equipoMin >= U.equipo.crit]
+    ];
+    $("opsList").innerHTML = ops.map(function(o){
+      var val = o[1];
+      var txt, cls = "";
+      if (typeof val === "boolean"){ txt = val ? "verdadero" : "falso"; cls = val ? "true" : "false"; }
+      else { txt = val.toFixed(1) + " %"; }
+      return "<div class='op'><span class='expr'>" + o[0] + "</span><span class='res " + cls + "'>" + txt + "</span></div>";
+    }).join("");
+  }
+
+  /* ---------- Escenarios ---------- */
+  var ESCENARIOS = {
+    normal:      { cpu:35, ram:45, libre:120, total:200, appNombre:"Navegador", appMin:8,  equipoMin:12 },
+    advertencia: { cpu:78, ram:82, libre:30,  total:200, appNombre:"Navegador", appMin:30, equipoMin:40 },
+    critico:     { cpu:95, ram:93, libre:10,  total:200, appNombre:"Navegador", appMin:70, equipoMin:90 }
+  };
+  function cargar(nombre){
+    var e = ESCENARIOS[nombre];
+    $("cpu").value = e.cpu; $("ram").value = e.ram;
+    $("libre").value = e.libre; $("total").value = e.total;
+    $("appNombre").value = e.appNombre; $("appMin").value = e.appMin;
+    $("equipoMin").value = e.equipoMin;
+    pintar(evaluar());
+  }
+
+  /* ---------- Eventos ---------- */
+  $("btnEvaluar").addEventListener("click", function(){ pintar(evaluar()); });
+  $("btnLimpiar").addEventListener("click", function(){
+    ["cpu","ram","libre","total","appMin","equipoMin"].forEach(function(id){ $(id).value = ""; });
+    $("appNombre").value = "Navegador";
+    $("globalBox").className = "status-global";
+    $("globalVal").textContent = "—";
+    ["Cpu","Ram","Disco","Inact"].forEach(function(k){
+      $("num"+k).textContent = "—";
+      $("pill"+k).textContent = "—";
+      $("pill"+k).className = "pill";
+      $("det"+k).textContent = "";
+      $("tile"+k).style.borderColor = "";
+    });
+    $("numApp").textContent = "—";
+    $("detApp").textContent = "";
+    $("pillApp").textContent = "—";
+    $("pillApp").className = "pill";
+    $("alertList").innerHTML = '<li class="empty">Presione «Evaluar estado» para procesar los datos.</li>';
+    $("repBody").innerHTML = "";
+    $("opsList").innerHTML = '<div class="empty">Sin operaciones registradas.</div>';
+  });
+  Array.prototype.forEach.call(document.querySelectorAll("[data-sc]"), function(b){
+    b.addEventListener("click", function(){ cargar(b.getAttribute("data-sc")); });
+  });
+
+  /* Estado inicial: escenario de advertencia */
+  cargar("advertencia");
+
+  /* API mínima para pruebas automatizadas */
+  window.__sim = {
+    evaluar: evaluar,
+    pintar: pintar,
+    cargar: cargar,
+    clasifAlto: clasifAlto,
+    clasifDisco: clasifDisco,
+    U: U
+  };
+})();
+</script>
+</body>
+</html>
