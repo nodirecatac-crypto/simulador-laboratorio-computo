@@ -65,6 +65,8 @@ evidencias/captura_4_validacion.png
 - Curso: Arquitectura del Computador
 - Producto: T1 — Proyecto Integrador
 - Grupo: 06
+- Institución: UPN
+- Caso N.º 12: uso eficiente de un laboratorio de cómputo
 
 Los datos que se ingresan son simulados: la intención es explicar el flujo
 entrada → procesamiento → memoria → salida, no medir el hardware real.
